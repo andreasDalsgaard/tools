@@ -10,7 +10,7 @@ public class Annotation {
 		LENGTH
 	}
 	
-	public Annotation(Annotation.AnnotationType annoType, String annoValue) {
+	public Annotation(AnnotationType annoType, String annoValue) {
 		this.annoType = annoType;
 		this.annoValue = annoValue;
 	}

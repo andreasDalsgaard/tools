@@ -123,54 +123,13 @@ public class CGNodeAnalyzer {
 
 		return loopAnalyzer.getLoopHeaderBasicBlocksGraphIds();
 	}
-	
-	/* TODO make a generic generateCFG function - this function was copied from ReportGenerator but is not based on SSAcfg */
-	private void GenerateCFG(AbstractNumberedLabeledGraph<ISSABasicBlock, String> cfg, String guid) throws WalaException{
-		Properties wp = WalaProperties.loadProperties();
-		wp.putAll(WalaExamplesProperties.loadProperties());
-
-        String tempDir = System.getProperty("java.io.tmpdir");
-		String psFile = tempDir + File.separatorChar + guid + ".pdf";	
-		String dotFile = tempDir + File.separatorChar + guid + ".dt";
-		String dotExe = wp.getProperty(WalaExamplesProperties.DOT_EXE);
-
-		final HashMap<ISSABasicBlock, String> labelMap = HashMapFactory.make();		
-		for (Iterator<ISSABasicBlock> iteratorBasicBlock = cfg.iterator(); iteratorBasicBlock.hasNext();) {
-			ISSABasicBlock basicBlock =  iteratorBasicBlock.next();
-
-			StringBuilder label = new StringBuilder();
-			
-
-			if(basicBlock.isEntryBlock()) {
-				label.append(basicBlock.toString());
-				label.append("(entry)");				
-			} else if(basicBlock.isExitBlock()) {
-				label.append(basicBlock.toString());
-				label.append("(exit)");
-			} else {
-				label.append("BB"+basicBlock.getNumber()+"   ");
-				Iterator<SSAInstruction> iteratorInstruction = basicBlock.iterator();
-				while(iteratorInstruction.hasNext()) {
-					SSAInstruction inst = iteratorInstruction.next();
-					label.append(inst.toString() + " ");
-				}
-			}
-			labelMap.put(basicBlock, label.toString());
-		}
-		NodeDecorator labels = new NodeDecorator() {
-			public String getLabel(Object o) {
-				return labelMap.get(o);
-			}
-		};
-		DotUtil.dotify(cfg, labels, dotFile, psFile, dotExe);
-	}
-	
+		
 	private void startNodeAnalysis() {	
 		boolean exceptionOptimize = false;
 		
 		if (CGNodeAnalyzer.DEBUG == true) {
 			try {
-				this.GenerateCFG(cfg, "internalLPCfg"+CGNodeAnalyzer.internalCfgNr++);
+				Util.GenerateCFG(cfg, "internalLPCfg"+CGNodeAnalyzer.internalCfgNr++);
 			} catch (WalaException e1) {				
 				e1.printStackTrace();
 			}
@@ -459,7 +418,7 @@ public class CGNodeAnalyzer {
 			return maximumResult;
 			
 		} else if(costComputer.isInstructionInteresting(instruction)) {
-			costForInstruction = costComputer.getCostForInstructionInBlock(instruction, block, node);
+			costForInstruction = costComputer.getCostForInstructionInBlock(instruction, block);
 		}
 
 		return costForInstruction;

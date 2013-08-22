@@ -16,10 +16,9 @@ public class Parser {
 	
 	private static final Pattern annotationRegex = Pattern.compile(ANNOTATION_REGEX);
 	
-	private static final int ANNOTATION_TYPE_GROUP = 1;
-	//private static final int ANNOTATION_VALUE_GROUP2 = 2;
-	private static final int ANNOTATION_VALUE_GROUP3 = 3;
-	//private static final int ANNOTATION_VALUE_GROUP4 = 4;
+	private static final int ANNOTATION_TYPE_GROUP = 1; // Gets the type 
+	private static final int ANNOTATION_VALUE_GROUP3 = 3; // Gets the bounds 
+
 	
 	public Map<Integer, Annotation> GetAnnotations(BufferedReader fileReader) throws IOException {
 		Matcher regexMatcher;
@@ -39,10 +38,7 @@ public class Parser {
 				if(regexMatcher.find()) {
 					annotationType = regexMatcher.group(ANNOTATION_TYPE_GROUP);
 					annotationValue = regexMatcher.group(ANNOTATION_VALUE_GROUP3);
-					
-					if(annotationValue.startsWith("loop"))
-						annotationValue = regexMatcher.group(ANNOTATION_VALUE_GROUP3);
-					
+									
 					if(annotationType.equals("loopbound") || annotationType.equals(("WCA"))) {
 						annotations.put(lineNumber, new Annotation(AnnotationType.LOOPBOUND, annotationValue));				
 					} else if(annotationType.equals("length")) {

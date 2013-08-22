@@ -87,7 +87,7 @@ public class Util {
 		return Pair.make(g, edgeLabels);
 	}
 	
-	public static void CreatePDFCG(CallGraph cg, ClassHierarchy cha) throws WalaException {
+	public static void CreatePDFCGF(CallGraph cg, ClassHierarchy cha) throws WalaException {
 		AnalysisSpecification spec = AnalysisSpecification.getAnalysisSpecification();
 		
 		Properties wp = WalaProperties.loadProperties();
@@ -119,8 +119,40 @@ public class Util {
 	    };
 		DotUtil.dotify(cg, labels, dotFile, psFile, dotExe); 
 	}
+	
+	public static void CreatePDFCGF(CallGraph cg) throws WalaException {
+		AnalysisSpecification spec = AnalysisSpecification.getAnalysisSpecification();
+		
+		Properties wp = WalaProperties.loadProperties();
+	    wp.putAll(WalaExamplesProperties.loadProperties());
+	    String outputDir = spec.getOutputDir() + File.separatorChar;
 
-	public static void CreatePDFCFG(SlowSparseNumberedLabeledGraph<ISSABasicBlock, String> cfg, ClassHierarchy cha, CGNode node) throws WalaException {
+		String psFile = outputDir + "callGraph.pdf";		
+		String dotFile = outputDir + "callGraph.dt";
+		
+	    String dotExe = wp.getProperty(WalaExamplesProperties.DOT_EXE);
+	    
+	    final HashMap<CGNode, String> labelMap = HashMapFactory.make();
+	    
+	    BFSIterator<CGNode> cgIt = new BFSIterator<CGNode>(cg);
+	    while(cgIt.hasNext()) {
+	    	CGNode node = cgIt.next();
+	    	
+	        StringBuilder label = new StringBuilder();
+	        label.append(node.toString() + " " + node.getGraphNodeId());
+	        
+	        labelMap.put(node, label.toString());
+	      
+	    }
+	    NodeDecorator labels = new NodeDecorator() {
+	        public String getLabel(Object o) {
+	            return labelMap.get(o);
+	        }
+	    };
+		DotUtil.dotify(cg, labels, dotFile, psFile, dotExe); 
+	}
+	
+	public static void CreatePDFCFG(SlowSparseNumberedLabeledGraph<ISSABasicBlock, String> cfg, CGNode node) throws WalaException {
 		Properties wp = WalaProperties.loadProperties();
 		wp.putAll(WalaExamplesProperties.loadProperties());
 		String outputDir = wp.getProperty(WalaProperties.OUTPUT_DIR) + File.separatorChar;
@@ -131,7 +163,7 @@ public class Util {
 		String psFile = outputDir + javaFileName + ".pdf";		
 		String dotFile = outputDir + javaFileName + ".dt";
 		String dotExe = wp.getProperty(WalaExamplesProperties.DOT_EXE);
-		String gvExe = wp.getProperty(WalaExamplesProperties.PDFVIEW_EXE);
+		
 		final HashMap<ISSABasicBlock, String> labelMap = HashMapFactory.make();
 
 		for (Iterator<ISSABasicBlock> it = cfg.iterator(); it.hasNext();) {
@@ -158,6 +190,182 @@ public class Util {
 
 		DotUtil.dotify(cfg, labels, dotFile, psFile, dotExe); 
 	}
+
+	public static void CreateCFG(ControlFlowGraph<SSAInstruction, IBasicBlock<SSAInstruction>> cfg, String filename) throws WalaException {
+		Properties wp = WalaProperties.loadProperties();
+		wp.putAll(WalaExamplesProperties.loadProperties());
+		String outputDir = wp.getProperty(WalaProperties.OUTPUT_DIR) + File.separatorChar;
+		String psFile = outputDir + filename + ".pdf";		
+		String dotFile = outputDir + filename + ".dt";
+		String dotExe = wp.getProperty(WalaExamplesProperties.DOT_EXE);
+		String gvExe = wp.getProperty(WalaExamplesProperties.PDFVIEW_EXE);
+		final HashMap<IBasicBlock<SSAInstruction>, String> labelMap = HashMapFactory.make();
+
+		for (Iterator<IBasicBlock<SSAInstruction>> it = cfg.iterator(); it.hasNext();) {
+			IBasicBlock<SSAInstruction> bb = it.next();
+
+			StringBuilder label = new StringBuilder();
+			label.append("ID #" + bb.getGraphNodeId() + "\n");
+			label.append(bb.toString() + "\n");
+
+			Iterator<SSAInstruction> itInst = bb.iterator();
+			while(itInst.hasNext()) {
+				SSAInstruction inst = itInst.next();
+				label.append(inst.toString() + "\n");
+			}
+
+			labelMap.put(bb, label.toString());
+
+		}
+		
+		NodeDecorator labels = new NodeDecorator() {
+			public String getLabel(Object o) {
+				return labelMap.get(o);
+			}
+		};
+
+		DotUtil.dotify(cfg, labels, dotFile, psFile, dotExe); 
+	}
+	
+	public static void CreateCVV(ControlFlowGraph<SSAInstruction, ISSABasicBlock> cfg, String filename) throws WalaException {
+		Properties wp = WalaProperties.loadProperties();
+		wp.putAll(WalaExamplesProperties.loadProperties());
+		String outputDir = wp.getProperty(WalaProperties.OUTPUT_DIR) + File.separatorChar;
+		String psFile = outputDir + filename + ".pdf";		
+		String dotFile = outputDir + filename + ".dt";
+		String dotExe = wp.getProperty(WalaExamplesProperties.DOT_EXE);
+
+		final HashMap<ISSABasicBlock, String> labelMap = HashMapFactory.make();
+
+		for (Iterator<ISSABasicBlock> it = cfg.iterator(); it.hasNext();) {
+			ISSABasicBlock bb = it.next();
+
+			StringBuilder label = new StringBuilder();
+			label.append("ID #" + bb.getGraphNodeId() + "\n");
+			label.append(bb.toString() + "\n");
+
+			Iterator<SSAInstruction> itInst = bb.iterator();
+			while(itInst.hasNext()) {
+				SSAInstruction inst = itInst.next();
+				label.append(inst.toString() + "\n");
+			}
+
+			labelMap.put(bb, label.toString());
+
+		}
+		
+		NodeDecorator labels = new NodeDecorator() {
+			public String getLabel(Object o) {
+				return labelMap.get(o);
+			}
+		};
+
+		DotUtil.dotify(cfg, labels, dotFile, psFile, dotExe); 
+	}
+	
+	/* TODO make a generic generateCFG function - this function was copied from ReportGenerator but is not based on SSAcfg */
+	public static void GenerateCFG(AbstractNumberedLabeledGraph<ISSABasicBlock, String> cfg, String guid) throws WalaException{
+		Properties wp = WalaProperties.loadProperties();
+		wp.putAll(WalaExamplesProperties.loadProperties());
+
+        String tempDir = System.getProperty("java.io.tmpdir");
+		String psFile = tempDir + File.separatorChar + guid + ".pdf";	
+		String dotFile = tempDir + File.separatorChar + guid + ".dt";
+		String dotExe = wp.getProperty(WalaExamplesProperties.DOT_EXE);
+
+		final HashMap<ISSABasicBlock, String> labelMap = HashMapFactory.make();		
+		for (Iterator<ISSABasicBlock> iteratorBasicBlock = cfg.iterator(); iteratorBasicBlock.hasNext();) {
+			ISSABasicBlock basicBlock =  iteratorBasicBlock.next();
+
+			StringBuilder label = new StringBuilder();
+			
+			if(basicBlock.isEntryBlock()) {
+				label.append(basicBlock.toString());
+				label.append("(entry)");				
+			} else if(basicBlock.isExitBlock()) {
+				label.append(basicBlock.toString());
+				label.append("(exit)");
+			} else {
+				label.append("BB"+basicBlock.getNumber()+"   ");
+				Iterator<SSAInstruction> iteratorInstruction = basicBlock.iterator();
+				while(iteratorInstruction.hasNext()) {
+					SSAInstruction inst = iteratorInstruction.next();
+					label.append(inst.toString() + " ");
+				}
+			}
+			labelMap.put(basicBlock, label.toString());
+		}
+		NodeDecorator labels = new NodeDecorator() {
+			public String getLabel(Object o) {
+				return labelMap.get(o);
+			}
+		};
+		DotUtil.dotify(cfg, labels, dotFile, psFile, dotExe);
+	}
+	
+	/*
+	public <T> void CreatePDF(Graph<T> g,String filename, int key) throws WalaException {
+		Properties wp = WalaProperties.loadProperties();
+		wp.putAll(WalaExamplesProperties.loadProperties());
+		String outputDir = wp.getProperty(WalaProperties.OUTPUT_DIR) + File.separatorChar;
+		String psFile = outputDir + filename + ".pdf";		
+		String dotFile = outputDir + filename + ".dt";
+		String dotExe = wp.getProperty(WalaExamplesProperties.DOT_EXE);
+		
+		switch (key) {
+		case 1:
+			CG(g,labelMap);
+			break;
+		case 2:
+			CFG(g,labelMap);
+			break;
+		default:
+			System.out.println("Error: There is not print out any graph");
+			break;
+		}
+		
+		NodeDecorator labels = new NodeDecorator() {
+			public String getLabel(Object o) {
+				return labelMap.get(o);
+			}
+		};
+
+		DotUtil.dotify(g, labels, dotFile, psFile, dotExe);
+	}
+		
+	private void CG(CallGraph cg){
+		HashMap<CGNode, String> labelMap = HashMapFactory.make();
+		BFSIterator<CGNode> cgIt = new BFSIterator<CGNode>(cg);
+	    while(cgIt.hasNext()) {
+	    	CGNode node = cgIt.next();
+	    	
+	        StringBuilder label = new StringBuilder();
+	        label.append(node.toString() + " " + node.getGraphNodeId());
+	        
+	        labelMap.put(node, label.toString()); 
+	    }
+	}
+	
+	private void CFG(ControlFlowGraph<SSAInstruction, IBasicBlock<SSAInstruction>> cfg){
+		HashMap<IBasicBlock<SSAInstruction>, String> labelMap = HashMapFactory.make();
+		for (Iterator<IBasicBlock<SSAInstruction>> it = cfg.iterator(); it.hasNext();) {
+			IBasicBlock<SSAInstruction> bb = it.next();
+
+			StringBuilder label = new StringBuilder();
+			label.append("ID #" + bb.getGraphNodeId() + "\n");
+			label.append(bb.toString() + "\n");
+
+			Iterator<SSAInstruction> itInst = bb.iterator();
+			while(itInst.hasNext()) {
+				SSAInstruction inst = itInst.next();
+				label.append(inst.toString() + "\n");
+			}
+
+			labelMap.put(bb, label.toString());
+		}
+	}
+	*/
+
 
 	public static IClass getIClass(String str, IClassHierarchy cha)
 	{

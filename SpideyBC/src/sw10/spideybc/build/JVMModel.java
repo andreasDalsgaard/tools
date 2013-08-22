@@ -18,22 +18,17 @@ import com.ibm.wala.types.TypeName;
 public class JVMModel {
 	public int referenceSize;
 	public int oneUnitSize;
-	public Map<String, Integer> typeSizeByTypeName;
+	public Map<TypeName, Integer> typeSizeByTypeName;
 	public int jvmObjectOverheadSize;
 	public int frameOverhead;
 	
 	public JVMModel() {
-		this.typeSizeByTypeName = new HashMap<String, Integer>();
+		this.typeSizeByTypeName = new HashMap<TypeName, Integer>();
 	}
 	
-	public int getSizeForQualifiedType(TypeName type) {
-		String parsedKey = type.toString();
-		if (parsedKey.startsWith("L")) {
-			parsedKey = parsedKey.substring(1);
-		}
-		parsedKey = parsedKey.replace('/', '.');
-		if (this.typeSizeByTypeName.containsKey(parsedKey)) {
-			return this.typeSizeByTypeName.get(parsedKey);
+	public int getSizeofType(TypeName type) {
+		if (this.typeSizeByTypeName.containsKey(type)) {
+			return this.typeSizeByTypeName.get(type);
 		}
 		else
 		{
@@ -41,13 +36,8 @@ public class JVMModel {
 		}
 	}
 	
-	public void addType(String typeName, int size)
+	public void addType(TypeName typeName, int size)
 	{
-		if (typeName.startsWith("L")) {
-			typeName = typeName.substring(1);
-		}
-		
-		typeName = typeName.replace('/', '.');
 		typeSizeByTypeName.put(typeName, size);
 	}
 	

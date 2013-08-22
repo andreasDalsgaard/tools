@@ -47,6 +47,10 @@ public class Analyzer {
 		for(CGNode entryNode : entryCGNodes) {;
 			OutputPrinter.printInfo("Starting entry node " + entryNode.getMethod().toString());
 			ICostResult results = new CGNodeAnalyzer(entryNode, costComputer).analyzeNode();
+			// Test code 
+			long tmp = new CostComputerMemory(specification.getJvmModel()).dfsVisit(entryNode);
+			System.out.println("Cost : " + tmp);
+			// Test code
 			CostResultMemory memRes = (CostResultMemory)results;				
 			OutputPrinter.printInfo("Worst case allocation for " + entryNode.getMethod().toString() + ":\t" + results.getCostScalar());
 			for(Entry<TypeName, Integer> i : memRes.aggregatedCountByTypename.entrySet()) {

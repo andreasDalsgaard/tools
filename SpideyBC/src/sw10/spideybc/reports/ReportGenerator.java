@@ -506,9 +506,9 @@ public class ReportGenerator {
 						int typeSize;
 
 						if(memCost.arraySizeByTypeName.containsKey(typeName)) {
-							typeSize = memCost.arraySizeByTypeName.get(typeName) * jvmModel.getSizeForQualifiedType(typeName);
+							typeSize = memCost.arraySizeByTypeName.get(typeName) * jvmModel.getSizeofType(typeName);
 						} else {
-							typeSize = jvmModel.getSizeForQualifiedType(typeName);
+							typeSize = jvmModel.getSizeofType(typeName);
 						}
 						int totalCost = count*typeSize;
 
@@ -540,9 +540,9 @@ public class ReportGenerator {
 						int typeSize;
 
 						if(memCost.aggregatedArraySizeByTypeName.containsKey(typeName)) {							
-							typeSize = memCost.aggregatedArraySizeByTypeName.get(typeName) * jvmModel.getSizeForQualifiedType(typeName);
+							typeSize = memCost.aggregatedArraySizeByTypeName.get(typeName) * jvmModel.getSizeofType(typeName);
 						} else {
-							typeSize = count * jvmModel.getSizeForQualifiedType(typeName);
+							typeSize = count * jvmModel.getSizeofType(typeName);
 						}
 
 						code.append("<td>" + typeSize + "</td>");
@@ -590,9 +590,9 @@ public class ReportGenerator {
 							int typeSize;
 
 							if(refCGNodeCost.aggregatedArraySizeByTypeName.containsKey(typeName)) {
-								typeSize = memCost.aggregatedArraySizeByTypeName.get(typeName) * jvmModel.getSizeForQualifiedType(typeName);
+								typeSize = memCost.aggregatedArraySizeByTypeName.get(typeName) * jvmModel.getSizeofType(typeName);
 							} else {
-								typeSize = count * jvmModel.getSizeForQualifiedType(typeName);
+								typeSize = count * jvmModel.getSizeofType(typeName);
 							}
 
 							code.append("<td>" + typeSize + "</td>");

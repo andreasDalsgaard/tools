@@ -5,6 +5,8 @@ import java.util.Map.Entry;
 
 import sw10.spideybc.build.JVMModel;
 
+import com.ibm.wala.types.TypeName;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
@@ -31,19 +33,29 @@ public class JVMModelDeserializer implements JsonDeserializer<JVMModel> {
 		model.frameOverhead = json.getAsJsonObject().get(FRAME_OVERHEAD_KEY).getAsInt();
 		
 		JsonArray primordialTypes = json.getAsJsonObject().getAsJsonArray(PRIMORDIAL_TYPES_ARRAY_KEY);
-		for(JsonElement typeSizeEntry : primordialTypes) {
-			for(Entry<String, JsonElement> e : typeSizeEntry.getAsJsonObject().entrySet()) {
-				model.typeSizeByTypeName.put(e.getKey(), e.getValue().getAsInt());
-			}
-		}
-		
-		JsonArray ApplicationTypes = json.getAsJsonObject().getAsJsonArray(APPLICATION_TYPES_ARRAY_KEY);
-		for(JsonElement typeSizeEntry : ApplicationTypes) {
-			for(Entry<String, JsonElement> e : typeSizeEntry.getAsJsonObject().entrySet()) {
-				model.typeSizeByTypeName.put(e.getKey(), e.getValue().getAsInt());
-			}			
-		}
+		putJsonInModel(model, primordialTypes);
+		JsonArray applicationTypes = json.getAsJsonObject().getAsJsonArray(APPLICATION_TYPES_ARRAY_KEY);
+		putJsonInModel(model, applicationTypes);
 		
 		return model;
 	}
+	
+ 	private void putJsonInModel(JVMModel model, JsonArray jsonarray){
+ 		for(JsonElement typeSizeEntry : jsonarray) {
+			for(Entry<String, JsonElement> e : typeSizeEntry.getAsJsonObject().entrySet()) {
+				model.typeSizeByTypeName.put(jsonToTypeName(e.getKey()), e.getValue().getAsInt());  
+			}			
+		}
+ 	}	
+
+ 	private TypeName jsonToTypeName(String name) { // This method transform the json syntax to the TypeName syntax (java)
+ 		if (name.startsWith("[")) // Array types [C] -> [C   
+ 			name = name.substring(0, name.indexOf("]"));
+	
+ 		if(name.contains(".")){ // Libraries java/lang/string -> Ljava.lang.string. 
+ 			name = name.replace(".", "/");
+ 			name = "L" + name;
+ 		}
+ 		return TypeName.string2TypeName(name);
+ 	}
 }

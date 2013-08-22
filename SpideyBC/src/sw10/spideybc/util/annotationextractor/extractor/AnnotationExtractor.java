@@ -59,15 +59,14 @@ public class AnnotationExtractor {
 	}
 	
 	public Map<Integer, Annotation> getAnnotations(IMethod method) {
-		IClass declaringClass = method.getDeclaringClass();
-		String packageName = declaringClass.getName().toString();
+		String packageName = method.getDeclaringClass().getName().toString();
 		packageName = Util.getClassNameOrOuterMostClassNameIfNestedClass(packageName);
 		packageName = (packageName.contains("/") ? packageName.substring(1, packageName.lastIndexOf('/')) : "");
 
 		String path = specification.getSourceFilesRootDir() + '/';
 		path = (packageName.isEmpty() ? path : path + packageName + '/');
 
-		String sourceFileName = declaringClass.getSourceFileName();
+		String sourceFileName = method.getDeclaringClass().getSourceFileName();
 		Map<Integer, Annotation> annotationsForMethod = null;
 		try {
 			annotationsForMethod = retrieveAnnotations(path, sourceFileName);

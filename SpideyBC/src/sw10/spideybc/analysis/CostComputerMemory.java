@@ -1,17 +1,28 @@
 package sw10.spideybc.analysis;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import org.apache.commons.io.FilenameUtils;
+
+import net.sf.javailp.Operator;
 import net.sf.javailp.Problem;
 import net.sf.javailp.Result;
 import sw10.spideybc.analysis.ICostResult.ResultType;
+import sw10.spideybc.analysis.loopanalysis.CFGLoopAnalyzer;
 import sw10.spideybc.build.AnalysisEnvironment;
 import sw10.spideybc.build.JVMModel;
+import sw10.spideybc.errors.ErrorPrinter;
+import sw10.spideybc.errors.ErrorPrinter.AnnotationType;
+import sw10.spideybc.errors.ErrorPrinter.ModelType;
 import sw10.spideybc.program.AnalysisSpecification;
 import sw10.spideybc.util.OutputPrinter;
 import sw10.spideybc.util.FileScanner;
@@ -21,26 +32,46 @@ import sw10.spideybc.util.OutputPrinter.ModelType;
 import sw10.spideybc.util.annotationextractor.extractor.AnnotationExtractor;
 import sw10.spideybc.util.annotationextractor.parser.Annotation;
 
+import com.ibm.wala.cfg.ControlFlowGraph;
 import com.ibm.wala.cfg.ShrikeCFG;
 import com.ibm.wala.cfg.ShrikeCFG.BasicBlock;
+import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IField;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.classLoader.ShrikeBTMethod;
+import com.ibm.wala.examples.properties.WalaExamplesProperties;
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallString;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
+import com.ibm.wala.properties.WalaProperties;
 import com.ibm.wala.shrikeBT.IInstruction;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.ISSABasicBlock;
+import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSACFG;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.util.WalaException;
+import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.graph.Graph;
+import com.ibm.wala.util.graph.impl.NodeWithNumber;
+import com.ibm.wala.util.graph.labeled.AbstractNumberedLabeledGraph;
+import com.ibm.wala.util.graph.labeled.SlowSparseNumberedLabeledGraph;
+import com.ibm.wala.util.graph.traverse.BFSIterator;
+import com.ibm.wala.util.intset.IntIterator;
+import com.ibm.wala.util.intset.IntSet;
+import com.ibm.wala.viz.DotUtil;
+import com.ibm.wala.viz.NodeDecorator;
 
 public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 
@@ -48,6 +79,8 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 	private AnalysisResults analysisResults;
 	private AnalysisSpecification analysisSpecification;
 	private AnalysisEnvironment analysisEnvironment;
+	// New code, only use to debug. 
+	private Map<Integer, ArrayList<Integer>> loopBlocksByHeaderBlockId;
 	
 	public CostComputerMemory(JVMModel model) {
 		this.model = model;
@@ -57,20 +90,19 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 	}
 	
 	@Override
-	public CostResultMemory getCostForInstructionInBlock(SSAInstruction instruction, ISSABasicBlock block, CGNode node) {
+	public CostResultMemory getCostForInstructionInBlock(SSAInstruction instruction, ISSABasicBlock block) {
 		TypeName typeName = ((SSANewInstruction) instruction).getNewSite().getDeclaredType().getName();
-		String typeNameStr = typeName.toString();
 		CostResultMemory cost = new CostResultMemory();
-		if (typeNameStr.startsWith("[")) {
-			setCostForNewArrayObject(cost, typeName, typeNameStr, block);	
+		if (typeName.isArrayType()) {
+			setCostForNewArrayObject(cost, typeName, block);	
 		} else {
-			setCostForNewObject(cost, typeName, typeNameStr, block);
+			setCostForNewObject(cost, typeName, block);
 		}
 
 		return cost;
 	}	
 	
-	private void setCostForNewArrayObject(CostResultMemory cost, TypeName typeName, String typeNameStr, ISSABasicBlock block)  {
+	private void setCostForNewArrayObject(CostResultMemory cost, TypeName typeName, ISSABasicBlock block)  {
 		Integer arrayLength = null;
 		
 		IBytecodeMethod method = (IBytecodeMethod)block.getMethod();
@@ -98,7 +130,7 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		}
 					
 		try {
-			int allocationCost = arrayLength * model.getSizeForQualifiedType(typeName);
+			int allocationCost = arrayLength * model.getSizeofType(typeName);
 			cost.allocationCost = allocationCost;
 			cost.typeNameByNodeId.put(block.getGraphNodeId(), typeName);
 			cost.arraySizeByNodeId.put(block.getGraphNodeId(), Pair.make(typeName, arrayLength)); 
@@ -148,7 +180,7 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		long sum = 0;
 		
 		if (!aClass.isReferenceType()) {
-			return model.getSizeForQualifiedType(aClass.getName());
+			return model.getSizeofType(aClass.getName());
 		} else if(aClass.isArrayClass()) {
 			sum += model.referenceSize;
 		} else {			
@@ -158,7 +190,7 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 				if (tr.isReferenceType()) {
 					sum += model.referenceSize; 
 				} else {
-					sum += model.getSizeForQualifiedType(tr.getName());
+					sum += model.getSizeofType(tr.getName());
 				}				
 			}			
 			sum += model.jvmObjectOverheadSize;
@@ -168,7 +200,7 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 			sum += model.referenceSize;
 		}
 		
-		model.addType(aClass.getReference().getName().toString(), (int) sum);		
+		model.addType(aClass.getReference().getName(), (int) sum);		
 		return sum;
 	}
 	
@@ -176,14 +208,14 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		cost.typeNameByNodeId.put(block.getGraphNodeId(), typeName);		
 		cost.resultType = ResultType.TEMPORARY_BLOCK_RESULT;
 		try {
-			cost.allocationCost = model.getSizeForQualifiedType(typeName);
+			cost.allocationCost = model.getSizeofType(typeName);
 		} catch(NoSuchElementException e) {
 			try {				
-				IClass aClass = Util.getIClass(typeNameStr, this.analysisEnvironment.getClassHierarchy());
+				IClass aClass = Util.getIClass(typeName.toString(), this.analysisEnvironment.getClassHierarchy());
 				cost.allocationCost = this.calcCost(aClass);				
 			} catch(NoSuchElementException e2)
 			{
-				System.err.println("json model does not contain type: " + typeNameStr);
+				System.err.println("json model does not contain type: " + typeName.toString());
 			}
 		}
 	}
@@ -332,6 +364,111 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		return results;
 	}        
 
+	
+	/* Our new cost model */ 
+	public long dfsVisit(CGNode node) throws WalaException {		
+		long maxCost = 0, newCost = 0;	
+		
+		Iterator<CGNode> list = analysisEnvironment.getCallGraph().getSuccNodes(node);
+		
+		while (list.hasNext()) {
+			CGNode succ = list.next();
+			
+			newCost = dfsVisit(succ);
+			if (newCost > maxCost)
+				maxCost = newCost;			
+		}
+			
+		maxCost = nodeCost(node);
+
+		return maxCost;		
+	}
+		
+	public long nodeCost(CGNode node) {
+		ControlFlowGraph<SSAInstruction, ISSABasicBlock> cfg = node.getIR().getControlFlowGraph();
+		BFSIterator<ISSABasicBlock> iteratorBFSOrdering = new BFSIterator<ISSABasicBlock>(cfg);
+		long cost = 0;
+		long loopcost = 1;
+		CFGLoopAnalyzer loopAnalyzer = CFGLoopAnalyzer.makeAnalyzerForCFG(cfg);
+		loopAnalyzer.runDfsOrdering(node.getIR().getControlFlowGraph().entry());
+		this.loopBlocksByHeaderBlockId = loopAnalyzer.getLoopHeaderBasicBlocksGraphIds();
+		
+		while(iteratorBFSOrdering.hasNext()){
+			
+			ISSABasicBlock currentBlock = iteratorBFSOrdering.next();
+			
+			for(SSAInstruction instruction : Iterator2Iterable.make(currentBlock.iterator())) {
+				if(instruction instanceof SSAInvokeInstruction) {
+					cost += getCostForInstructionInvoke(instruction,node);
+				} else if(isInstructionInteresting(instruction)) {
+					cost += getCostForInstructionInBlock(instruction, currentBlock).getCostScalar();
+				}		
+			}
+			
+			loopcost *= getLoopBoundCost(node, currentBlock); // This is bad very bad 
+		}
+		
+		return cost*loopcost;
+	}
+	
+	
+	public boolean isForLoop(int line, Map<Integer, Annotation> annotationByLineNumber) {
+		return (annotationByLineNumber.containsKey(line) ? true : false);
+	}
+	
+	public boolean isWhileLoop(int line, Map<Integer, Annotation> annotationByLineNumber) {
+		return (annotationByLineNumber.containsKey(line) ? true : false);
+	}
+	
+	public long getLoopBoundCost(CGNode node, ISSABasicBlock currentBlock){
+		if (loopBlocksByHeaderBlockId.containsKey(currentBlock.getGraphNodeId())) {
+			AnnotationExtractor extractor = AnnotationExtractor.getAnnotationExtractor();
+			Map<Integer, Annotation> annotationByLineNumber = extractor.getAnnotations(currentBlock.getMethod());
+			int lineNumber = 0;
+			String loopbound = ""; 
+			
+			try {
+				IBytecodeMethod bytecodeMethod = (IBytecodeMethod)node.getMethod();
+				lineNumber = bytecodeMethod.getLineNumber(bytecodeMethod.getBytecodeIndex(currentBlock.getFirstInstructionIndex()));
+				if (annotationByLineNumber == null || (!isForLoop(lineNumber, annotationByLineNumber) || !isWhileLoop(lineNumber, annotationByLineNumber))) {
+					ErrorPrinter.printAnnotationError(AnnotationType.AnnotationLoop, currentBlock.getMethod(), lineNumber);
+				} else { 
+					if (isForLoop(lineNumber,annotationByLineNumber)) {
+						loopbound = annotationByLineNumber.get(lineNumber).getAnnotationValue(); // This return a string. This should instead be a int or long
+					} else if (isWhileLoop(lineNumber,annotationByLineNumber)) {
+						loopbound = annotationByLineNumber.get(lineNumber - 1).getAnnotationValue(); // This return a string. This should instead be a int or long
+					}
+					return Integer.parseInt(loopbound);
+				}
+				
+			} catch (InvalidClassFileException e) {
+			}    								
+		}
+		return 1; // This line will only be execute if there is no loop in the block 
+	}
+	
+	
+	public long getCostForInstructionInvoke(SSAInstruction instruction, CGNode node){
+		SSAInvokeInstruction inst = (SSAInvokeInstruction)instruction;
+		CallSiteReference callSiteRef = inst.getCallSite();
+		Set<CGNode> possibleTargets = analysisEnvironment.getCallGraph().getPossibleTargets(node, callSiteRef);
+		long maximumResult = 0;
+		long tempResult = 0;
+		CallStringContext csContext = (CallStringContext)node.getContext();
+		CallString callString = (CallString)csContext.get(CallStringContextSelector.CALL_STRING);
+	
+		for(CGNode target : Iterator2Iterable.make(possibleTargets.iterator())) {
+			if (CGNodeAnalyzer.doesContainMethod(callString.getMethods(), target.getMethod())) { // Use of context-sensitivity to eliminate recursion
+				continue;
+			}
+			tempResult = nodeCost(target);
+			if(maximumResult == 0 || tempResult > maximumResult)
+				maximumResult = tempResult;
+		}
+		
+		return maximumResult;
+	}
+	
 	@Override
 	public boolean isInstructionInteresting(SSAInstruction instruction) {
 		return (instruction instanceof SSANewInstruction ? true : false);
