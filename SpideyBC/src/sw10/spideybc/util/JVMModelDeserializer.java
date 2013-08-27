@@ -48,10 +48,7 @@ public class JVMModelDeserializer implements JsonDeserializer<JVMModel> {
 		}
  	}	
 
- 	private TypeName jsonToTypeName(String name) { // This method transform the json syntax to the TypeName syntax (java)
- 		if (name.startsWith("[")) // Array types [C] -> [C   
- 			name = name.substring(0, name.indexOf("]"));
-	
+ 	private TypeName jsonToTypeName(String name) { // This method transform the json syntax to the Wala syntax (java)
  		if(name.contains(".")){ // Libraries java/lang/string -> Ljava.lang.string. 
  			name = name.replace(".", "/");
  			name = "L" + name;

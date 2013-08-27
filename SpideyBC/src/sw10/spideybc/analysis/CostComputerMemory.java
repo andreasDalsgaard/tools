@@ -11,8 +11,6 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import org.apache.commons.io.FilenameUtils;
-
 import net.sf.javailp.Operator;
 import net.sf.javailp.Problem;
 import net.sf.javailp.Result;
@@ -20,9 +18,6 @@ import sw10.spideybc.analysis.ICostResult.ResultType;
 import sw10.spideybc.analysis.loopanalysis.CFGLoopAnalyzer;
 import sw10.spideybc.build.AnalysisEnvironment;
 import sw10.spideybc.build.JVMModel;
-import sw10.spideybc.errors.ErrorPrinter;
-import sw10.spideybc.errors.ErrorPrinter.AnnotationType;
-import sw10.spideybc.errors.ErrorPrinter.ModelType;
 import sw10.spideybc.program.AnalysisSpecification;
 import sw10.spideybc.util.OutputPrinter;
 import sw10.spideybc.util.FileScanner;
@@ -204,7 +199,7 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		return sum;
 	}
 	
-	private void setCostForNewObject(CostResultMemory cost, TypeName typeName, String typeNameStr, ISSABasicBlock block) {		
+	private void setCostForNewObject(CostResultMemory cost, TypeName typeName, ISSABasicBlock block) {		
 		cost.typeNameByNodeId.put(block.getGraphNodeId(), typeName);		
 		cost.resultType = ResultType.TEMPORARY_BLOCK_RESULT;
 		try {
@@ -366,94 +361,105 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 
 	
 	/* Our new cost model */ 
-	public long dfsVisit(CGNode node) throws WalaException {		
-		long maxCost = 0, newCost = 0;	
-		
+	public ICostResult dfsVisit(CGNode node) throws WalaException {		
+		ICostResult maxCost = null, newCost = null;  
 		Iterator<CGNode> list = analysisEnvironment.getCallGraph().getSuccNodes(node);
 		
 		while (list.hasNext()) {
 			CGNode succ = list.next();
 			
 			newCost = dfsVisit(succ);
-			if (newCost > maxCost)
+			if (maxCost == null  || newCost.getCostScalar() > maxCost.getCostScalar())
 				maxCost = newCost;			
 		}
 			
 		maxCost = nodeCost(node);
-
 		return maxCost;		
 	}
 		
-	public long nodeCost(CGNode node) {
+	public ICostResult nodeCost(CGNode node) {
 		ControlFlowGraph<SSAInstruction, ISSABasicBlock> cfg = node.getIR().getControlFlowGraph();
 		BFSIterator<ISSABasicBlock> iteratorBFSOrdering = new BFSIterator<ISSABasicBlock>(cfg);
-		long cost = 0;
+		CostResultMemory cost = new CostResultMemory();
 		long loopcost = 1;
 		CFGLoopAnalyzer loopAnalyzer = CFGLoopAnalyzer.makeAnalyzerForCFG(cfg);
 		loopAnalyzer.runDfsOrdering(node.getIR().getControlFlowGraph().entry());
 		this.loopBlocksByHeaderBlockId = loopAnalyzer.getLoopHeaderBasicBlocksGraphIds();
 		
 		while(iteratorBFSOrdering.hasNext()){
-			
 			ISSABasicBlock currentBlock = iteratorBFSOrdering.next();
 			
 			for(SSAInstruction instruction : Iterator2Iterable.make(currentBlock.iterator())) {
 				if(instruction instanceof SSAInvokeInstruction) {
-					cost += getCostForInstructionInvoke(instruction,node);
+					cost.allocationCost += getCostForInstructionInvoke(instruction,node).getCostScalar();
 				} else if(isInstructionInteresting(instruction)) {
-					cost += getCostForInstructionInBlock(instruction, currentBlock).getCostScalar();
+					cost.allocationCost += getCostForInstructionInBlock(instruction, currentBlock).getCostScalar();
 				}		
 			}
-			
-			loopcost *= getLoopBoundCost(node, currentBlock); // This is bad very bad 
+			if (loopBlocksByHeaderBlockId.containsKey(currentBlock.getGraphNodeId()))
+				loopcost *= getLoopBoundCost(node, currentBlock); // MORE TEST 
 		}
 		
-		return cost*loopcost;
+		cost.allocationCost *= loopcost; // This is not awesome code
+		saveReportData(cost, node);
+		return cost;
 	}
 	
-	
-	public boolean isForLoop(int line, Map<Integer, Annotation> annotationByLineNumber) {
-		return (annotationByLineNumber.containsKey(line) ? true : false);
-	}
-	
-	public boolean isWhileLoop(int line, Map<Integer, Annotation> annotationByLineNumber) {
-		return (annotationByLineNumber.containsKey(line) ? true : false);
+	public void saveReportData(CostResultMemory cost, CGNode node) {
+		/* Save node stack information. Code from getFinalResultsFromContextResultsAndLPSolutions */
+		AnalysisResults results = AnalysisResults.getAnalysisResults(); // This is report code
+		IMethod method = node.getMethod();
+		Set<Integer> lines = new HashSet<Integer>(); // This is use to highlight code stump in report data. This is not used in the code :'(
+		
+		if(method instanceof ShrikeBTMethod) {		
+			ShrikeBTMethod shrikeMethod = (ShrikeBTMethod)method;	
+			cost.setStackUnitSize(model.oneUnitSize);
+			cost.setMaxLocals(shrikeMethod.getMaxLocals());
+			cost.setMaxStackHeight(shrikeMethod.getMaxStackHeight()-2);	//Substract two since Shrike adds two and assumes this makes the number of entries not word - we actually want the number of words and what Shrike does is wrong!
+		}
+		
+		if(analysisSpecification.isEntryPointCGNode(node)) {
+			analysisResults.addReportData(FileScanner.getFullPath(method.getDeclaringClass().getSourceFileName()), lines, node, cost);
+		}
+		
+		if (node.getMethod().getDeclaringClass().getClassLoader().getName().toString().equals("Application")) {
+			analysisResults.addNonEntryReportData(FileScanner.getFullPath(method.getDeclaringClass().getSourceFileName()), lines, node);
+		}
+		
+		results.saveResultForNode(node, cost);
 	}
 	
 	public long getLoopBoundCost(CGNode node, ISSABasicBlock currentBlock){
-		if (loopBlocksByHeaderBlockId.containsKey(currentBlock.getGraphNodeId())) {
-			AnnotationExtractor extractor = AnnotationExtractor.getAnnotationExtractor();
-			Map<Integer, Annotation> annotationByLineNumber = extractor.getAnnotations(currentBlock.getMethod());
-			int lineNumber = 0;
-			String loopbound = ""; 
+		AnnotationExtractor extractor = AnnotationExtractor.getAnnotationExtractor();
+		Map<Integer, Annotation> annotationByLineNumber = extractor.getAnnotations(currentBlock.getMethod());
+		int lineNumber = 0;
+		String loopbound = "";
 			
-			try {
-				IBytecodeMethod bytecodeMethod = (IBytecodeMethod)node.getMethod();
-				lineNumber = bytecodeMethod.getLineNumber(bytecodeMethod.getBytecodeIndex(currentBlock.getFirstInstructionIndex()));
-				if (annotationByLineNumber == null || (!isForLoop(lineNumber, annotationByLineNumber) || !isWhileLoop(lineNumber, annotationByLineNumber))) {
-					ErrorPrinter.printAnnotationError(AnnotationType.AnnotationLoop, currentBlock.getMethod(), lineNumber);
-				} else { 
-					if (isForLoop(lineNumber,annotationByLineNumber)) {
-						loopbound = annotationByLineNumber.get(lineNumber).getAnnotationValue(); // This return a string. This should instead be a int or long
-					} else if (isWhileLoop(lineNumber,annotationByLineNumber)) {
-						loopbound = annotationByLineNumber.get(lineNumber - 1).getAnnotationValue(); // This return a string. This should instead be a int or long
-					}
-					return Integer.parseInt(loopbound);
+		try {
+			IBytecodeMethod bytecodeMethod = (IBytecodeMethod)node.getMethod();
+			lineNumber = bytecodeMethod.getLineNumber(bytecodeMethod.getBytecodeIndex(currentBlock.getFirstInstructionIndex()));
+			if (annotationByLineNumber == null || (!isForLoop(lineNumber, annotationByLineNumber) || !isWhileLoop(lineNumber, annotationByLineNumber))) {
+				OutputPrinter.printAnnotationError(AnnotationType.AnnotationLoop, currentBlock.getMethod(), lineNumber);
+			} else { 
+				if (isForLoop(lineNumber,annotationByLineNumber)) {
+					loopbound = annotationByLineNumber.get(lineNumber).getAnnotationValue(); // This return a string. This should instead be a int or long
+				} else if (isWhileLoop(lineNumber,annotationByLineNumber)) {
+					loopbound = annotationByLineNumber.get(lineNumber - 1).getAnnotationValue(); // This return a string. This should instead be a int or long
 				}
-				
-			} catch (InvalidClassFileException e) {
-			}    								
-		}
-		return 1; // This line will only be execute if there is no loop in the block 
+				return Integer.parseInt(loopbound);
+			}
+			
+		} catch (InvalidClassFileException e) {
+		}    								
+		return 1; // This line will be execute if "No loop bound detected in" a handler
 	}
-	
-	
-	public long getCostForInstructionInvoke(SSAInstruction instruction, CGNode node){
+		
+	public ICostResult getCostForInstructionInvoke(SSAInstruction instruction, CGNode node){
 		SSAInvokeInstruction inst = (SSAInvokeInstruction)instruction;
 		CallSiteReference callSiteRef = inst.getCallSite();
 		Set<CGNode> possibleTargets = analysisEnvironment.getCallGraph().getPossibleTargets(node, callSiteRef);
-		long maximumResult = 0;
-		long tempResult = 0;
+		ICostResult maximumResult = null;
+		ICostResult tempResult = null;
 		CallStringContext csContext = (CallStringContext)node.getContext();
 		CallString callString = (CallString)csContext.get(CallStringContextSelector.CALL_STRING);
 	
@@ -462,17 +468,26 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 				continue;
 			}
 			tempResult = nodeCost(target);
-			if(maximumResult == 0 || tempResult > maximumResult)
+			if(maximumResult == null || tempResult.getCostScalar() > maximumResult.getCostScalar())
 				maximumResult = tempResult;
 		}
 		
 		return maximumResult;
 	}
 	
+	public boolean isForLoop(int line, Map<Integer, Annotation> annotationByLineNumber) {
+		return (annotationByLineNumber.containsKey(line) ? true : false);
+	}
+	
+	public boolean isWhileLoop(int line, Map<Integer, Annotation> annotationByLineNumber) {
+		return (annotationByLineNumber.containsKey(line) ? true : false);
+	}
+
 	@Override
 	public boolean isInstructionInteresting(SSAInstruction instruction) {
 		return (instruction instanceof SSANewInstruction ? true : false);
 	}
+	
 	
 	@Override
 	public void addCost(CostResultMemory fromResult, CostResultMemory toResult) {

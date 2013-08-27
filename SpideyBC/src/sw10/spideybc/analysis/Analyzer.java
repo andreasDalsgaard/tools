@@ -44,12 +44,14 @@ public class Analyzer {
 
 		LinkedList<CGNode> entryCGNodes = specification.getEntryPointCGNodes();	
 
-		for(CGNode entryNode : entryCGNodes) {;
-			OutputPrinter.printInfo("Starting entry node " + entryNode.getMethod().toString());
-			ICostResult results = new CGNodeAnalyzer(entryNode, costComputer).analyzeNode();
-			// Test code 
-			long tmp = new CostComputerMemory(specification.getJvmModel()).dfsVisit(entryNode);
-			System.out.println("Cost : " + tmp);
+		for(CGNode entryNode : entryCGNodes) {
+			//OutputPrinter.printInfo("Starting entry node " + entryNode.getMethod().toString());
+			//ICostResult results = new CGNodeAnalyzer(entryNode, costComputer).analyzeNode();
+			// Test code
+			//AnalysisResults result = AnalysisResults.getAnalysisResults();;
+			ICostResult results = new CostComputerMemory(specification.getJvmModel()).dfsVisit(entryNode);
+			//ICostResult res = ;
+			//result.saveResultForNode(entryNode,res); // Try to use the code which is made to make a report. 
 			// Test code
 			CostResultMemory memRes = (CostResultMemory)results;				
 			OutputPrinter.printInfo("Worst case allocation for " + entryNode.getMethod().toString() + ":\t" + results.getCostScalar());
@@ -57,7 +59,7 @@ public class Analyzer {
 				OutputPrinter.printInfo("\t TYPE_NAME\t" + i.getKey().toString() + "\tCOUNT " + i.getValue());
 			}
 		}
-
+		
 		if ( specification.getTypeOfAnalysisPerformed() != AnalysisType.ALLOCATIONS) {
 			stackAnalyzer.analyze();
 		}

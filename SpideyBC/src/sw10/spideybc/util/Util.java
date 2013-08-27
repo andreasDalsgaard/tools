@@ -27,8 +27,8 @@ import com.ibm.wala.util.graph.labeled.SlowSparseNumberedLabeledGraph;
 import com.ibm.wala.util.graph.traverse.BFSIterator;
 import com.ibm.wala.viz.DotUtil;
 import com.ibm.wala.viz.NodeDecorator;
-
-
+import com.ibm.wala.util.graph.labeled.AbstractNumberedLabeledGraph;
+ 
 public class Util {
 	public static String getClassNameOrOuterMostClassNameIfNestedClass(String fullQualifiedClassName) {
 		String fileKey = null;
@@ -190,7 +190,7 @@ public class Util {
 
 		DotUtil.dotify(cfg, labels, dotFile, psFile, dotExe); 
 	}
-
+	/*
 	public static void CreateCFG(ControlFlowGraph<SSAInstruction, IBasicBlock<SSAInstruction>> cfg, String filename) throws WalaException {
 		Properties wp = WalaProperties.loadProperties();
 		wp.putAll(WalaExamplesProperties.loadProperties());
@@ -225,7 +225,7 @@ public class Util {
 		};
 
 		DotUtil.dotify(cfg, labels, dotFile, psFile, dotExe); 
-	}
+	}*/
 	
 	public static void CreateCVV(ControlFlowGraph<SSAInstruction, ISSABasicBlock> cfg, String filename) throws WalaException {
 		Properties wp = WalaProperties.loadProperties();

@@ -440,6 +440,5 @@ public class CGNodeAnalyzer {
 		this.finalResults = costComputer.getFinalResultsFromContextResultsAndLPSolutions(intermediateResults, result, 
 				lpProblem.getProblem(), edgeLabelToNodesIDs, calleeNodeResultsByBlockGraphId, this.node);
 		this.results.saveResultForNode(this.node, finalResults);
-
 	}
 }
