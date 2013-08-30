@@ -46,12 +46,8 @@ public class Analyzer {
 
 		for(CGNode entryNode : entryCGNodes) {
 			//OutputPrinter.printInfo("Starting entry node " + entryNode.getMethod().toString());
-			//ICostResult results = new CGNodeAnalyzer(entryNode, costComputer).analyzeNode();
-			// Test code
-			//AnalysisResults result = AnalysisResults.getAnalysisResults();;
-			ICostResult results = new CostComputerMemory(specification.getJvmModel()).dfsVisit(entryNode);
-			//ICostResult res = ;
-			//result.saveResultForNode(entryNode,res); // Try to use the code which is made to make a report. 
+			ICostResult results = new CGNodeAnalyzer(entryNode, costComputer).analyzeNode();		
+			//ICostResult results = new CostComputerMemory(specification.getJvmModel()).dfsVisit(entryNode); 
 			// Test code
 			CostResultMemory memRes = (CostResultMemory)results;				
 			OutputPrinter.printInfo("Worst case allocation for " + entryNode.getMethod().toString() + ":\t" + results.getCostScalar());

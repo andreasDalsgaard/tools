@@ -69,8 +69,7 @@ public class AnalysisEnvironmentBuilder {
 		if (specification.getJarIncludesStdLibraries()) {
 			scope = AnalysisScope.createJavaAnalysisScope();
 		}
-		else
-		{			
+		else {			
 			scope = AnalysisScopeReader.makePrimordialScope(fp.getFile(CallGraphTestUtil.REGRESSION_EXCLUSIONS));
 		}
 
@@ -81,8 +80,7 @@ public class AnalysisEnvironmentBuilder {
 		ScopeModule applicationScope = new ScopeModule();
 		ScopeModule primordialScope = new ScopeModule();
 
-		while (entriesInApplication.hasNext())
-		{
+		while (entriesInApplication.hasNext()) {
 			ModuleEntry entry = entriesInApplication.next();
 			if (specification.getJarIncludesStdLibraries() && 
 					(entry.getClassName().startsWith("java") ||
@@ -91,15 +89,13 @@ public class AnalysisEnvironmentBuilder {
 							entry.getClassName().startsWith("util/Dbg") || entry.getClassName().startsWith("util/Timer"))){
 				primordialScope.addEntry(entry);
 			}	  
-			else
-			{
+			else {
 				if (entry.isClassFile()) {
 					applicationScope.addEntry(entry);
 					String className = entry.getClassName();
 					File file = originalSourceCodeFilesByClassName.get(sw10.spideybc.util.Util.getClassNameOrOuterMostClassNameIfNestedClass(className));
-					if(file != null) {
+					if(file != null)
 						scope.addSourceFileToScope(scope.getLoader(AnalysisScope.APPLICATION), file, entry.getClassName() + ".java");
-					}
 				}
 			}	
 		}

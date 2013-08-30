@@ -94,7 +94,6 @@ public class ReportDataToJSONConverter {
 		for(CallGraphNodeModel model : modelsFromEntryNodes) {
 			finalModel.children[index++] = model;
 		}
-		Gson gson = new Gson();
 		return finalModel;
 	}
 }

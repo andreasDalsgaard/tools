@@ -75,13 +75,14 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 	private AnalysisSpecification analysisSpecification;
 	private AnalysisEnvironment analysisEnvironment;
 	// New code, only use to debug. 
-	private Map<Integer, ArrayList<Integer>> loopBlocksByHeaderBlockId;
+	private Map<Integer, ArrayList<Integer>> loopBlocksByHeaderBlockId; // This variable should be rename
 	
 	public CostComputerMemory(JVMModel model) {
 		this.model = model;
 		this.analysisResults = AnalysisResults.getAnalysisResults();
 		this.analysisSpecification = AnalysisSpecification.getAnalysisSpecification();
 		this.analysisEnvironment = AnalysisEnvironment.getAnalysisEnvironment();
+		
 	}
 	
 	@Override
@@ -216,7 +217,8 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 	}
 
 	@Override
-	public CostResultMemory getFinalResultsFromContextResultsAndLPSolutions(CostResultMemory resultsContext, Result lpResults, Problem problem, Map<String, Pair<Integer, Integer>> edgeLabelToNodesIDs, Map<Integer, ICostResult> calleeResultsAtGraphNodeIdByResult, CGNode cgNode) {
+	public CostResultMemory getFinalResultsFromContextResultsAndLPSolutions(CostResultMemory resultsContext, Result lpResults, Problem problem, Map<String, Pair<Integer, Integer>> edgeLabelToNodesIDs, 
+			Map<Integer, ICostResult> calleeResultsAtGraphNodeIdByResult, CGNode cgNode) {
 		
 		CostResultMemory results = new CostResultMemory();
 		if (resultsContext != null) {
@@ -372,7 +374,7 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 			if (maxCost == null  || newCost.getCostScalar() > maxCost.getCostScalar())
 				maxCost = newCost;			
 		}
-			
+
 		maxCost = nodeCost(node);
 		return maxCost;		
 	}
@@ -381,17 +383,17 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		ControlFlowGraph<SSAInstruction, ISSABasicBlock> cfg = node.getIR().getControlFlowGraph();
 		BFSIterator<ISSABasicBlock> iteratorBFSOrdering = new BFSIterator<ISSABasicBlock>(cfg);
 		CostResultMemory cost = new CostResultMemory();
-		long loopcost = 1;
 		CFGLoopAnalyzer loopAnalyzer = CFGLoopAnalyzer.makeAnalyzerForCFG(cfg);
 		loopAnalyzer.runDfsOrdering(node.getIR().getControlFlowGraph().entry());
-		this.loopBlocksByHeaderBlockId = loopAnalyzer.getLoopHeaderBasicBlocksGraphIds();
+		this.loopBlocksByHeaderBlockId = loopAnalyzer.getLoopHeaderBasicBlocksGraphIds(); 
+		long loopcost = 1;
 		
 		while(iteratorBFSOrdering.hasNext()){
 			ISSABasicBlock currentBlock = iteratorBFSOrdering.next();
 			
 			for(SSAInstruction instruction : Iterator2Iterable.make(currentBlock.iterator())) {
 				if(instruction instanceof SSAInvokeInstruction) {
-					cost.allocationCost += getCostForInstructionInvoke(instruction,node).getCostScalar();
+					cost.allocationCost += getCostForInstructionInvoke(instruction, node).getCostScalar();
 				} else if(isInstructionInteresting(instruction)) {
 					cost.allocationCost += getCostForInstructionInBlock(instruction, currentBlock).getCostScalar();
 				}		
@@ -409,13 +411,31 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		/* Save node stack information. Code from getFinalResultsFromContextResultsAndLPSolutions */
 		AnalysisResults results = AnalysisResults.getAnalysisResults(); // This is report code
 		IMethod method = node.getMethod();
-		Set<Integer> lines = new HashSet<Integer>(); // This is use to highlight code stump in report data. This is not used in the code :'(
+		Set<Integer> lines = new HashSet<Integer>(); // This is use to highlight code stump in report data.
 		
 		if(method instanceof ShrikeBTMethod) {		
-			ShrikeBTMethod shrikeMethod = (ShrikeBTMethod)method;	
+			ShrikeBTMethod shrikeMethod = (ShrikeBTMethod)method;
 			cost.setStackUnitSize(model.oneUnitSize);
 			cost.setMaxLocals(shrikeMethod.getMaxLocals());
 			cost.setMaxStackHeight(shrikeMethod.getMaxStackHeight()-2);	//Substract two since Shrike adds two and assumes this makes the number of entries not word - we actually want the number of words and what Shrike does is wrong!
+		}
+		
+		// This is wrong
+		if(node.getMethod().getDeclaringClass().getClassLoader().getName().toString().equals("Application")) {
+			IBytecodeMethod bytecodeMethod = (IBytecodeMethod)method;
+			BFSIterator<ISSABasicBlock> iteratorBFSOrdering = new BFSIterator<ISSABasicBlock>(node.getIR().getControlFlowGraph());
+			while(iteratorBFSOrdering.hasNext()){
+				ISSABasicBlock currentBlock = iteratorBFSOrdering.next();
+				
+				try {
+					if(currentBlock.getFirstInstructionIndex() >= 0) {
+						int line = bytecodeMethod.getLineNumber(bytecodeMethod.getBytecodeIndex(currentBlock.getFirstInstructionIndex()));
+						lines.add(line);
+					}
+				} catch(InvalidClassFileException e) {
+					System.err.println(e.getMessage());
+				}
+			}
 		}
 		
 		if(analysisSpecification.isEntryPointCGNode(node)) {
@@ -425,6 +445,8 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		if (node.getMethod().getDeclaringClass().getClassLoader().getName().toString().equals("Application")) {
 			analysisResults.addNonEntryReportData(FileScanner.getFullPath(method.getDeclaringClass().getSourceFileName()), lines, node);
 		}
+		
+		cost.worstcaseReferencesMethods.add(node);
 		
 		results.saveResultForNode(node, cost);
 	}
