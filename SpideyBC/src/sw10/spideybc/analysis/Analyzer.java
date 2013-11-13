@@ -26,14 +26,13 @@ public class Analyzer {
 		this.stackAnalyzer = new StackAnalyzer(specification.getJvmModel());
 	}
 
-	public Analyzer(AnalysisSpecification spec) {
+	public Analyzer(AnalysisSpecification spec) { // Why is this here ?? There is not ref to it in the project 
 		this.specification = spec;
 		
 		if ( specification.getTypeOfAnalysisPerformed() != AnalysisType.ALLOCATIONS) {
 			this.stackAnalyzer = new StackAnalyzer(specification.getJvmModel());
 		}
 	}
-
 	
 	public static Analyzer makeAnalyzer() {
 		return new Analyzer();
@@ -55,7 +54,7 @@ public class Analyzer {
 				OutputPrinter.printInfo("\t TYPE_NAME\t" + i.getKey().toString() + "\tCOUNT " + i.getValue());
 			}
 		}
-		
+		/* This is move to the program. 
 		if ( specification.getTypeOfAnalysisPerformed() != AnalysisType.ALLOCATIONS) {
 			stackAnalyzer.analyze();
 		}
@@ -63,6 +62,6 @@ public class Analyzer {
 		if ( specification.getShouldGenerateAnalysisReports() == true) {
 			ReportGenerator gen = new ReportGenerator();
 			gen.Generate(AnalysisResults.getAnalysisResults().getReportEntries());
-		}
+		}*/
 	}
 }

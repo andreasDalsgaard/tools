@@ -76,6 +76,7 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 	private AnalysisEnvironment analysisEnvironment;
 	// New code, only use to debug. 
 	private Map<Integer, ArrayList<Integer>> loopBlocksByHeaderBlockId; // This variable should be rename
+	private Map<Integer, CostResultMemory> nodecostlistIdtocost;
 	
 	public CostComputerMemory(JVMModel model) {
 		this.model = model;
@@ -366,15 +367,16 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 	public ICostResult dfsVisit(CGNode node) throws WalaException {		
 		ICostResult maxCost = null, newCost = null;  
 		Iterator<CGNode> list = analysisEnvironment.getCallGraph().getSuccNodes(node);
+		nodecostlistIdtocost = new HashMap<Integer, CostResultMemory>();
 		
 		while (list.hasNext()) {
 			CGNode succ = list.next();
 			
 			newCost = dfsVisit(succ);
 			if (maxCost == null  || newCost.getCostScalar() > maxCost.getCostScalar())
-				maxCost = newCost;			
+				maxCost = newCost;
 		}
-
+		System.out.println("Calling nodecost");
 		maxCost = nodeCost(node);
 		return maxCost;		
 	}
@@ -385,8 +387,14 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		CostResultMemory cost = new CostResultMemory();
 		CFGLoopAnalyzer loopAnalyzer = CFGLoopAnalyzer.makeAnalyzerForCFG(cfg);
 		loopAnalyzer.runDfsOrdering(node.getIR().getControlFlowGraph().entry());
-		this.loopBlocksByHeaderBlockId = loopAnalyzer.getLoopHeaderBasicBlocksGraphIds(); 
+		this.loopBlocksByHeaderBlockId = loopAnalyzer.getLoopHeaderBasicBlocksGraphIds();
 		long loopcost = 1;
+		
+		if (nodecostlistIdtocost != null && nodecostlistIdtocost.containsKey(node.getGraphNodeId())) {
+			System.out.println("Cache is used");
+			return nodecostlistIdtocost.get(node.getGraphNodeId());
+		}
+			
 		
 		while(iteratorBFSOrdering.hasNext()){
 			ISSABasicBlock currentBlock = iteratorBFSOrdering.next();
@@ -404,6 +412,7 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 		
 		cost.allocationCost *= loopcost; // This is not awesome code
 		saveReportData(cost, node);
+		nodecostlistIdtocost.put(node.getGraphNodeId(), cost);
 		return cost;
 	}
 	
@@ -446,7 +455,7 @@ public class CostComputerMemory implements ICostComputer<CostResultMemory> {
 			analysisResults.addNonEntryReportData(FileScanner.getFullPath(method.getDeclaringClass().getSourceFileName()), lines, node);
 		}
 		
-		cost.worstcaseReferencesMethods.add(node);
+		//cost.worstcaseReferencesMethods.add(node);
 		
 		results.saveResultForNode(node, cost);
 	}

@@ -145,4 +145,3 @@ class ScopeModule implements Module
 		return entries.iterator();
 	}	
 }
-

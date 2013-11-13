@@ -11,5 +11,6 @@
 	<classpathentry kind="lib" path="libs/lpsolve55j.jar"/>
 	<classpathentry kind="lib" path="libs/gson-2.2.2.jar"/>
 	<classpathentry kind="lib" path="libs/velocity-1.7-dep.jar"/>
+	<classpathentry kind="lib" path="/home/boand/Downloads/json-simple-1.1.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

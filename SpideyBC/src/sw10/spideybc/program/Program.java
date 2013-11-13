@@ -6,13 +6,16 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 
+import sw10.spideybc.analysis.AnalysisResults;
 import sw10.spideybc.analysis.Analyzer;
 import sw10.spideybc.analysis.CostComputerMemory;
 import sw10.spideybc.analysis.ICostComputer;
 import sw10.spideybc.analysis.ICostResult;
+import sw10.spideybc.analysis.StackAnalyzer;
 import sw10.spideybc.build.AnalysisEnvironmentBuilder;
 import sw10.spideybc.build.JVMModel;
 import sw10.spideybc.program.AnalysisSpecification.AnalysisType;
+import sw10.spideybc.reports.ReportGenerator;
 import sw10.spideybc.util.Config;
 import sw10.spideybc.util.OutputPrinter;
 import sw10.spideybc.util.RunConfiguration;
@@ -24,11 +27,25 @@ import com.ibm.wala.util.io.CommandLine;
 public class Program {
 
 	public static void main(String[] args) throws IOException, IllegalArgumentException, CancelException, InstantiationException, IllegalAccessException, WalaException, SecurityException, InvocationTargetException, NoSuchMethodException {		
-		AnalysisSpecification specification = parseCommandLineArguments(args);
-		AnalysisEnvironmentBuilder.makeFromSpecification(specification);
-		specification.setEntryPointCGNodes();
-		Analyzer analyzer = Analyzer.makeAnalyzer();
+		AnalysisSpecification specification = parseCommandLineArguments(args); // Gets the arg
+		AnalysisEnvironmentBuilder.makeFromSpecification(specification); // Make/gets the cfg and other wala stuff
+		specification.setEntryPointCGNodes(); // set the entry point in the cg
+		
+		// This is here we shall split up all the function
+		Analyzer analyzer = Analyzer.makeAnalyzer(); 
 		analyzer.start((Class<? extends ICostComputer<ICostResult>>)CostComputerMemory.class);
+		
+		// Instead of calling report in other analyzer. Then call it here
+		// make report of data.
+		StackAnalyzer stackAnalyzer = new StackAnalyzer(specification.getJvmModel());
+		if ( specification.getTypeOfAnalysisPerformed() != AnalysisType.ALLOCATIONS) {
+			stackAnalyzer.analyze();
+		}
+		
+		if ( specification.getShouldGenerateAnalysisReports() == true) {
+			ReportGenerator gen = new ReportGenerator();
+			gen.Generate(AnalysisResults.getAnalysisResults().getReportEntries());
+		}
 	}
 	
 	private static AnalysisSpecification parseCommandLineArguments(String[] args) {
