@@ -9,6 +9,7 @@ import java.util.Set;
 import sw10.spideybc.analysis.AnalysisResults;
 import sw10.spideybc.analysis.Analyzer;
 import sw10.spideybc.analysis.CostComputerMemory;
+import sw10.spideybc.analysis.Costplus;
 import sw10.spideybc.analysis.ICostComputer;
 import sw10.spideybc.analysis.ICostResult;
 import sw10.spideybc.analysis.StackAnalyzer;
@@ -32,11 +33,14 @@ public class Program {
 		specification.setEntryPointCGNodes(); // set the entry point in the cg
 		
 		// This is here we shall split up all the function
-		Analyzer analyzer = Analyzer.makeAnalyzer(); 
+		Analyzer analyzer = Analyzer.makeAnalyzer();
+		//Costplus costplus = new Costplus();
+		//costplus.costpluss();
 		analyzer.start((Class<? extends ICostComputer<ICostResult>>)CostComputerMemory.class);
 		
-		// Instead of calling report in other analyzer. Then call it here
-		// make report of data.
+		
+		// Instead of calling report in our analyzer tool. Then call it here.
+		// To make report of data.
 		StackAnalyzer stackAnalyzer = new StackAnalyzer(specification.getJvmModel());
 		if ( specification.getTypeOfAnalysisPerformed() != AnalysisType.ALLOCATIONS) {
 			stackAnalyzer.analyze();
