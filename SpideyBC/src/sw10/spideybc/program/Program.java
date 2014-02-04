@@ -9,7 +9,7 @@ import java.util.Set;
 import sw10.spideybc.analysis.AnalysisResults;
 import sw10.spideybc.analysis.Analyzer;
 import sw10.spideybc.analysis.CostComputerMemory;
-import sw10.spideybc.analysis.Costplus;
+import sw10.spideybc.analysis.PlusAnalyzer;
 import sw10.spideybc.analysis.ICostComputer;
 import sw10.spideybc.analysis.ICostResult;
 import sw10.spideybc.analysis.StackAnalyzer;
@@ -32,13 +32,20 @@ public class Program {
 		AnalysisEnvironmentBuilder.makeFromSpecification(specification); // Make/gets the cfg and other wala stuff
 		specification.setEntryPointCGNodes(); // set the entry point in the cg
 		
-		// This is here we shall split up all the function
-		Analyzer analyzer = Analyzer.makeAnalyzer();
-		//Costplus costplus = new Costplus();
-		//costplus.costpluss();
-		analyzer.start((Class<? extends ICostComputer<ICostResult>>)CostComputerMemory.class);
-		
-		
+		// This is here we have our two analyser (lpanalyzer, plusanalyzer)
+		switch (specification.getrunAnalyzer()) {
+		case 1:
+			Analyzer analyzer = Analyzer.makeAnalyzer();
+			analyzer.start((Class<? extends ICostComputer<ICostResult>>)CostComputerMemory.class);
+			break;
+		case 2:
+			PlusAnalyzer.costpluss();
+			break;
+			
+		default:
+			break;
+		}
+
 		// Instead of calling report in our analyzer tool. Then call it here.
 		// To make report of data.
 		StackAnalyzer stackAnalyzer = new StackAnalyzer(specification.getJvmModel());
@@ -70,6 +77,7 @@ public class Program {
 		String reports = properties.getProperty(Config.COMMANDLINE_REPORTS);
 		String entryPoints = properties.getProperty(Config.COMMANDLINE_ENTRYPOINTS);
 		String runConfiguration = properties.getProperty(Config.COMMANDLINE_RUNCONFIGURATION);
+		String runAnalyzer = properties.getProperty(Config.COMMANDLINE_RUNANALYZER);
 				
 		if(jvmModel == null || application == null 
 				|| jarIncludesStdLibraries == null || sourceFilesRootDir == null 
@@ -151,8 +159,17 @@ public class Program {
 			} else {
 				specification.setRunConfiguration(RunConfiguration.DEBUG);
 			}
+			
+			if(runAnalyzer != null) {
+				if(runAnalyzer.equalsIgnoreCase("lpcost")) {
+					specification.setrunAnalyzer(1); // 1 is the lpcost in the swicth case
+				}
+				else if(runAnalyzer.equalsIgnoreCase("pluscost")) {
+					specification.setrunAnalyzer(2); // 2 is the lpcost in the swicth case
+				}
+			}
 		}	
-		
+
 		return specification;
 	}
 	

@@ -6,59 +6,73 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
+import sw10.spideybc.analysis.ICostResult.ResultType;
 import sw10.spideybc.analysis.loopanalysis.CFGLoopAnalyzer;
 import sw10.spideybc.build.AnalysisEnvironment;
 import sw10.spideybc.build.JVMModel;
 import sw10.spideybc.program.AnalysisSpecification;
 import sw10.spideybc.util.FileScanner;
 import sw10.spideybc.util.OutputPrinter;
+import sw10.spideybc.util.Util;
 import sw10.spideybc.util.OutputPrinter.AnnotationType;
+import sw10.spideybc.util.OutputPrinter.ModelType;
 import sw10.spideybc.util.annotationextractor.extractor.AnnotationExtractor;
 import sw10.spideybc.util.annotationextractor.parser.Annotation;
 
 import com.ibm.wala.cfg.ControlFlowGraph;
+import com.ibm.wala.cfg.ShrikeCFG;
+import com.ibm.wala.cfg.ShrikeCFG.BasicBlock;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IBytecodeMethod;
+import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.IField;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.ShrikeBTMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallString;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
+import com.ibm.wala.shrikeBT.IInstruction;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
+import com.ibm.wala.ssa.SSANewInstruction;
+import com.ibm.wala.types.TypeName;
+import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Iterator2Iterable;
+import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.graph.traverse.BFSIterator;
 
-public class Costplus {
+public class PlusAnalyzer {
 	
-	private AnalysisSpecification specification;
-	private AnalysisEnvironment analysisEnvironment;
+	private static AnalysisSpecification specification;
+	private static AnalysisEnvironment analysisEnvironment;
 	private Map<Integer, ArrayList<Integer>> loopBlocksByHeaderBlockId; // This variable should be rename
 	private Map<Integer, CostResultMemory> nodecostlistIdtocost;
-	private AnalysisResults analysisResults;
-	private AnalysisSpecification analysisSpecification;
-	private JVMModel model;
+	private static AnalysisResults analysisResults;
+	private static AnalysisSpecification analysisSpecification;
+	private static JVMModel model;
 	
-	public int costpluss() throws WalaException{
-		this.specification = AnalysisSpecification.getAnalysisSpecification();
-		this.analysisEnvironment = AnalysisEnvironment.getAnalysisEnvironment();
-		//this.model = model;
-		this.analysisResults = AnalysisResults.getAnalysisResults();
-		this.analysisSpecification = AnalysisSpecification.getAnalysisSpecification();
+	public static PlusAnalyzer costpluss() throws WalaException{
+		specification = AnalysisSpecification.getAnalysisSpecification();
+		analysisEnvironment = AnalysisEnvironment.getAnalysisEnvironment();
+		model = specification.getJvmModel();
+		analysisResults = AnalysisResults.getAnalysisResults();
+		analysisSpecification = AnalysisSpecification.getAnalysisSpecification();
 		
 		LinkedList<CGNode> entryCGNodes = specification.getEntryPointCGNodes();	
 
 		for(CGNode entryNode : entryCGNodes) {
-			ICostResult results = new CostComputerMemory(specification.getJvmModel()).dfsVisit(entryNode);
+			//ICostResult results = new CostComputerMemory(specification.getJvmModel()).dfsVisit(entryNode);
+			ICostResult results = new PlusAnalyzer().dfsVisit(entryNode);
 			System.out.println(results.getCostScalar());
 		}
-		return 1;
+		return null;
 	}
 	 
 	public ICostResult dfsVisit(CGNode node) throws WalaException {		
@@ -101,7 +115,7 @@ public class Costplus {
 				if(instruction instanceof SSAInvokeInstruction) {
 					cost.allocationCost += getCostForInstructionInvoke(instruction, node).getCostScalar();
 				} else if(memutil.isInstructionInteresting(instruction)) {
-					cost.allocationCost += memutil.getCostForInstructionInBlock(instruction, currentBlock).getCostScalar();
+					cost.allocationCost += getCostForInstructionInBlock(instruction, currentBlock).getCostScalar();
 				}		
 			}
 			if (loopBlocksByHeaderBlockId.containsKey(currentBlock.getGraphNodeId()))
@@ -209,5 +223,135 @@ public class Costplus {
 	
 	public boolean isWhileLoop(int line, Map<Integer, Annotation> annotationByLineNumber) {
 		return (annotationByLineNumber.containsKey(line) ? true : false);
+	}
+	
+	public CostResultMemory getCostForInstructionInBlock(SSAInstruction instruction, ISSABasicBlock block) {
+		TypeName typeName = ((SSANewInstruction) instruction).getNewSite().getDeclaredType().getName();
+		CostResultMemory cost = new CostResultMemory();
+		if (typeName.isArrayType()) {
+			setCostForNewArrayObject(cost, typeName, block);	
+		} else {
+			setCostForNewObject(cost, typeName, block);
+		}
+		
+		return cost;
+	}
+	
+	private void setCostForNewArrayObject(CostResultMemory cost, TypeName typeName, ISSABasicBlock block)  {
+		Integer arrayLength = null;
+		
+		IBytecodeMethod method = (IBytecodeMethod)block.getMethod();
+		int lineNumber = -1;
+		try {
+			lineNumber = method.getLineNumber(method.getBytecodeIndex(block.getFirstInstructionIndex()));
+		} catch (InvalidClassFileException e1) {
+			e1.printStackTrace();
+		}
+
+		AnnotationExtractor extractor = AnnotationExtractor.getAnnotationExtractor();
+		Map<Integer, Annotation> annotationsForMethod = extractor.getAnnotations(method);
+		
+		if (annotationsForMethod != null && annotationsForMethod.containsKey(lineNumber)) {
+			Annotation annotationForArray = annotationsForMethod.get(lineNumber);
+			arrayLength = Integer.parseInt(annotationForArray.getAnnotationValue());
+		}
+		else {
+			arrayLength = tryGetArrayLength(block);
+
+			if(arrayLength == null) {
+				OutputPrinter.printAnnotationError(AnnotationType.AnnotationArray, method, lineNumber);
+				arrayLength = 0;
+			}
+		}
+					
+		try {
+			int allocationCost = arrayLength * model.getSizeofType(typeName);
+			cost.allocationCost = allocationCost;
+			cost.typeNameByNodeId.put(block.getGraphNodeId(), typeName);
+			cost.arraySizeByNodeId.put(block.getGraphNodeId(), Pair.make(typeName, arrayLength)); 
+			cost.resultType = ResultType.TEMPORARY_BLOCK_RESULT;
+		}
+		catch(NoSuchElementException e) {
+			OutputPrinter.printModelError(ModelType.ModelEntry, method, lineNumber, typeName);
+		}
+	}
+	
+	private Integer tryGetArrayLength(ISSABasicBlock block) {
+		IBytecodeMethod method = (IBytecodeMethod)block.getMethod();
+		ShrikeCFG shrikeCFG = ShrikeCFG.make(method);
+		BasicBlock shrikeBB = shrikeCFG.getNode(block.getGraphNodeId());	
+		
+		Integer arraySize = null;
+		IInstruction prevInst = null;
+		for(IInstruction inst : Iterator2Iterable.make(shrikeBB.iterator())) {
+			if(inst.toString().contains("[")) {
+				String in = inst.toString();
+				if(prevInst != null) {
+					arraySize = extractArrayLength(prevInst.toString());
+					break;
+				} else {
+					return null;
+				}
+			}
+			prevInst = inst;
+		}
+		
+		return arraySize;
+	}
+	
+	private Integer extractArrayLength(String instruction) {
+		String number = instruction.substring(instruction.indexOf(',')+1, instruction.length()-1);
+		Integer length = null;
+		try {
+			length = Integer.parseInt(number);
+		} catch(NumberFormatException e) {
+			
+		}
+		return length;
+	}
+	
+	private void setCostForNewObject(CostResultMemory cost, TypeName typeName, ISSABasicBlock block) {		
+		cost.typeNameByNodeId.put(block.getGraphNodeId(), typeName);		
+		cost.resultType = ResultType.TEMPORARY_BLOCK_RESULT;
+		try {
+			cost.allocationCost = model.getSizeofType(typeName);
+		} catch(NoSuchElementException e) {
+			try {				
+				IClass aClass = Util.getIClass(typeName.toString(), this.analysisEnvironment.getClassHierarchy());
+				cost.allocationCost = this.calcCost(aClass);				
+			} catch(NoSuchElementException e2)
+			{
+				System.err.println("json model does not contain type: " + typeName.toString());
+			}
+		}
+	}
+	
+	private long calcCost(IClass aClass)
+	{
+		long sum = 0;
+		
+		if (!aClass.isReferenceType()) {
+			return model.getSizeofType(aClass.getName());
+		} else if(aClass.isArrayClass()) {
+			sum += model.referenceSize;
+		} else {			
+			for(IField f : aClass.getAllInstanceFields()) {
+				TypeReference tr = f.getFieldTypeReference();
+				
+				if (tr.isReferenceType()) {
+					sum += model.referenceSize; 
+				} else {
+					sum += model.getSizeofType(tr.getName());
+				}				
+			}			
+			sum += model.jvmObjectOverheadSize;
+		}		
+		
+		if (sum == 0) {
+			sum += model.referenceSize;
+		}
+		
+		model.addType(aClass.getReference().getName(), (int) sum);		
+		return sum;
 	}
 }

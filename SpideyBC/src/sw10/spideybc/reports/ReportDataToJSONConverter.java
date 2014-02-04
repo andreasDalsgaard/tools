@@ -12,7 +12,6 @@ import sw10.spideybc.program.AnalysisSpecification;
 import com.google.gson.Gson;
 import com.ibm.wala.ipa.callgraph.CGNode;
 
-
 public class ReportDataToJSONConverter {
 	private AnalysisResults results;
 	private AnalysisSpecification specification;
@@ -79,7 +78,6 @@ public class ReportDataToJSONConverter {
 			for(CGNode referencedMethod : referencedMethods) {
 				modelForNode.children[index++] = expandModelForNode(referencedMethod);
 			}
-			
 			return modelForNode;
 		}
 	}

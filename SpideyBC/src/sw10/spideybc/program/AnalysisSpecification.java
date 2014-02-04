@@ -25,6 +25,7 @@ public class AnalysisSpecification {
 	private JVMModel jvmModel;
 	private String jvmModelString;
 	private RunConfiguration runConfiguration;
+	private Integer runAnalyzer;
 	
 	private LinkedList<CGNode> entryPointCGNodes;
 	
@@ -158,5 +159,13 @@ public class AnalysisSpecification {
 	
 	public boolean isEntryPointCGNode(CGNode cgNode) {
 		return entryPointCGNodes.contains(cgNode);
+	}
+	
+	public void setrunAnalyzer(int num) {
+		this.runAnalyzer = num;
+	}
+	
+	public int getrunAnalyzer() {
+		return runAnalyzer;
 	}
 }
