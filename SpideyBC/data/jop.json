@@ -1,0 +1,29 @@
+{ "ApplicationTypeSizes" : [  ],
+  "OneUnitSize" : 4,
+  "JvmObjectOverheadSize" : 8,
+  "PrimordialTypeSizes" : [ { "B" : 4 },
+      { "C" : 4 },
+      { "D" : 8 },
+      { "F" : 4 },
+      { "I" : 4 },
+      { "J" : 8 },
+      { "S" : 4 },
+      { "Z" : 4 },
+      { "[C" : 4 }
+    ],
+  "ReferenceSize" : 4,
+  "FrameOverhead" : 0,
+  "NativeFunctionMap" : [ { "com.jopdesign.sys.Native.wr(II)V" : 0 }, 
+      { "com.jopdesign.sys.Native.rd(I)I" : 0 },
+      { "com.jopdesign.sys.Native.getSP()I" : 0 },
+      { "com.jopdesign.sys.Native.rdIntMem(I)I" : 0 },
+      { "com.jopdesign.sys.Native.toObject(I)Ljava/lang/Object;" : 0 },
+      { "com.jopdesign.sys.Native.toInt(Ljava/lang/Object;)I" : 0 },
+      { "com.jopdesign.sys.Native.rdMem(I)I" : 0 },
+      { "com.jopdesign.sys.Native.toLong(D)J" : 0 },
+      { "com.jopdesign.sys.Native.toDouble(J)D" : 0 },
+      { "com.jopdesign.sys.Native.wrMem(II)V" : 0 }
+    ],
+  "RecursionLimitMap" : [ { "< Application, Lprivmem/pmFFTcpResult/app/FFT, fft([Lprivmem/pmFFTcpResult/app/Complex;)[Lprivmem/pmFFTcpResult/app/Complex; >" : 10 } 
+    ]
+}

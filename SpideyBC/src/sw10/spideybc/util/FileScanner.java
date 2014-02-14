@@ -32,7 +32,8 @@ public class FileScanner {
 	 * Args: 	exampleFile.java
 	 * Returns: examplePackage/exampleFile.java 
 	 */
-	public static String getRelativePath(String fileName) {		
+	public static String getRelativePath(String fileName) {	
+	  
 		fileName = fileName.substring(0, fileName.indexOf('.'));
 		String fullPath = "";
 		for(String path : mapping.keySet()) {

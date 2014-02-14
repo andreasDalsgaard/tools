@@ -1,5 +1,6 @@
 package sw10.spideybc.program;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 
 import com.ibm.wala.ipa.callgraph.CGNode;
@@ -25,7 +26,7 @@ public class AnalysisSpecification {
 	private JVMModel jvmModel;
 	private String jvmModelString;
 	private RunConfiguration runConfiguration;
-	private Integer runAnalyzer;
+	private int runAnalyzer;
 	
 	private LinkedList<CGNode> entryPointCGNodes;
 	
@@ -166,6 +167,6 @@ public class AnalysisSpecification {
 	}
 	
 	public int getrunAnalyzer() {
-		return runAnalyzer;
+		return this.runAnalyzer;
 	}
 }

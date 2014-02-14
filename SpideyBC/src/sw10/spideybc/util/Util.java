@@ -379,4 +379,12 @@ public class Util {
 		
 		throw new NoSuchElementException();	
 	}
+
+	
+	public static void error(String string) {
+			System.err.append("Error:" + string + "\n");
+			System.exit(1);		
+	}
+		
+	
 }

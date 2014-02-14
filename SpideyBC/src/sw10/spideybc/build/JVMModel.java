@@ -21,9 +21,13 @@ public class JVMModel {
 	public Map<TypeName, Integer> typeSizeByTypeName;
 	public int jvmObjectOverheadSize;
 	public int frameOverhead;
+	public Map<String, Integer> nativeFunctionMap;
+	public Map<String, Integer> recursionLimitMap;
 	
 	public JVMModel() {
 		this.typeSizeByTypeName = new HashMap<TypeName, Integer>();
+		this.nativeFunctionMap = new HashMap<String, Integer>();
+		this.recursionLimitMap = new HashMap<String, Integer>();
 	}
 	
 	public int getSizeofType(TypeName type) {

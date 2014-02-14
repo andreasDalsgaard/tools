@@ -86,7 +86,7 @@ public class AnalysisEnvironmentBuilder {
 					(entry.getClassName().startsWith("java") ||
 							entry.getClassName().startsWith("com") || 
 							entry.getClassName().startsWith("joprt") || 
-							entry.getClassName().startsWith("util/Dbg") || entry.getClassName().startsWith("util/Timer"))){
+							entry.getClassName().startsWith("util/Dbg") || entry.getClassName().startsWith("util/Timer"))){				
 				primordialScope.addEntry(entry);
 			}	  
 			else {
@@ -114,13 +114,13 @@ public class AnalysisEnvironmentBuilder {
 		Iterable<Entrypoint> entrypoints = Util.makeMainEntrypoints(analysisScope, classHierarchy, "L"+specification.getMainClass());
 		AnalysisOptions options = new AnalysisOptions(analysisScope, entrypoints);
 		options.setReflectionOptions(ReflectionOptions.NONE);
-
+		
 		return options;
 	}
 
 	private CallGraph buildZeroXCFAAnalysis(AnalysisScope analysisScope, ClassHierarchy classHierarchy) throws IllegalArgumentException, CancelException {
-		AnalysisOptions analysisOptions = buildEntryPoint(analysisScope, classHierarchy);
-
+		AnalysisOptions analysisOptions = buildEntryPoint(analysisScope, classHierarchy);		
+		
 		Util.addDefaultSelectors(analysisOptions, classHierarchy);
 		Util.addDefaultBypassLogic(analysisOptions, analysisScope, Util.class.getClassLoader(), classHierarchy);		
 		
