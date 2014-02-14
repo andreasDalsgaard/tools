@@ -21,6 +21,13 @@ def main(root, target, mapping):
                 for filename in files:
                     mappedFile = mapping[o]+path[len(CLASSDIR+o):]+'/'+filename.split('.')[0]
                     file_filter[mappedFile]=1
+                    if o == "java":
+                        try:
+                            mappedFile = mapping["ALT"+o]+path[len(CLASSDIR+o):]+'/'+filename.split('.')[0]
+                            file_filter[mappedFile]=1
+                        except:
+                            pass
+
     
             #Go through files in mapped dir and copy files to target dir if file in filter
             for path, subdirs, files in os.walk(SRCDIR+mapping[o]):
@@ -32,8 +39,28 @@ def main(root, target, mapping):
                         try:
                             os.makedirs(dstdir) 
                         except OSError:
+                            #print dstdir
                             pass
                         shutil.copy(path+'/'+filename, dst_file)
+
+
+            if o == "java":
+                try:
+                    for path, subdirs, files in os.walk(SRCDIR+mapping["ALT"+o]):
+                        for filename in files:
+                            relativePath = path[len(SRCDIR):]+'/'+filename.split('.')[0]
+                            if file_filter.has_key(relativePath):
+                                dst_file = SRCTARGET+o+path[len(SRCDIR+mapping["ALT"+o]):]+'/'+filename
+                                dstdir = os.path.dirname(dst_file)
+                                try:
+                                    os.makedirs(dstdir) 
+                                except OSError:
+                                    #print dstdir
+                                    pass
+                                shutil.copy(path+'/'+filename, dst_file)
+                except:
+                    pass
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Copy source files for examples compiled using JOP makefile.')
