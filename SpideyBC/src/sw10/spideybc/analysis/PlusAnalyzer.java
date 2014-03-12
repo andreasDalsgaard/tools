@@ -94,7 +94,7 @@ public class PlusAnalyzer {
 			// ICostResult results = new
 			// CostComputerMemory(specification.getJvmModel()).dfsVisit(entryNode);
 			Stack<String> scopeStack = new Stack<String>();
-			scopeStack.add("Immortal");
+			scopeStack.add("immortal");
 			HashMap<String, ICostResult> results = new PlusAnalyzer().dfsVisit(
 					entryNode, scopeStack, new HashMap<String, Integer>());
 			for (String s : results.keySet())
@@ -111,7 +111,7 @@ public class PlusAnalyzer {
 			throws WalaException {
 		int recurStart = 0;
 		
-		if (dfsvisitlist.containsKey(node.getGraphNodeId())) {
+		if (dfsvisitlist.containsKey(node.getGraphNodeId())) {			
 			return dfsvisitlist.get(node.getGraphNodeId());
 		} else if (this.model.recursionLimitMap
 				.get(node.getMethod().toString()) != null) {
@@ -205,14 +205,18 @@ public class PlusAnalyzer {
 			HashMap<String, ICostResult> maxCostMap,
 			HashMap<String, ICostResult> newCostMap) {
 		Set<String> ks = newCostMap.keySet();
-
+		Set<String> ks2 = maxCostMap.keySet();
+		HashSet<String> hks = new HashSet<String>(ks);
+		hks.addAll(ks2);		
+	
 		for (String s : ks) {
-			if (maxCostMap.get(s) != null) {
-				if (maxCostMap.get(s).getCostScalar() < newCostMap.get(s)
-						.getCostScalar())
-					maxCostMap.put(s, newCostMap.get(s));
+			if (maxCostMap.get(s) == null) {
+				maxCostMap.put(s, newCostMap.get(s));				
+			}  else if (newCostMap.get(s) == null) {
+				newCostMap.put(s, maxCostMap.get(s));
 			} else {
-				maxCostMap.put(s, newCostMap.get(s));
+				if (maxCostMap.get(s).getCostScalar() < newCostMap.get(s).getCostScalar())
+					maxCostMap.put(s, newCostMap.get(s));
 			}
 		}
 

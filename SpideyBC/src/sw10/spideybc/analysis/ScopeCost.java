@@ -94,7 +94,7 @@ public class ScopeCost {
 			return caller.getMethod().getDeclaringClass().getName().toString();				
 		} else if(isFuncName(callee, "getSequencer") && isImplemented(callee, safeletIClass))
 		{
-			return "Immortal";
+			return "immortal";
 		}
 		
 		return scopeStack.peek();
