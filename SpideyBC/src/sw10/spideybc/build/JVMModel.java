@@ -36,6 +36,11 @@ public class JVMModel {
 		}
 		else
 		{
+			String s = type.toString();
+			if (s.equals("Ljava/lang/Object")) {
+				return this.oneUnitSize*2;
+			}
+			
 			throw new NoSuchElementException();
 		}
 	}
