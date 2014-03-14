@@ -88,6 +88,10 @@ public class AnalysisEnvironmentBuilder {
 							entry.getClassName().startsWith("joprt") || 
 							entry.getClassName().startsWith("util/Dbg") || entry.getClassName().startsWith("util/Timer"))){				
 				primordialScope.addEntry(entry);
+				String className = entry.getClassName();
+				File file = originalSourceCodeFilesByClassName.get(sw10.spideybc.util.Util.getClassNameOrOuterMostClassNameIfNestedClass(className));
+				if(file != null)
+					scope.addSourceFileToScope(scope.getLoader(AnalysisScope.APPLICATION), file, entry.getClassName() + ".java");
 			}	  
 			else {
 				if (entry.isClassFile()) {

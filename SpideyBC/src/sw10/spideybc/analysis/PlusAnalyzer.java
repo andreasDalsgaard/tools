@@ -459,16 +459,15 @@ public class PlusAnalyzer {
 			CGNode node) {
 		SSAInvokeInstruction inst = (SSAInvokeInstruction) instruction;
 		CallSiteReference callSiteRef = inst.getCallSite();
-		ExplicitCallGraph cg = (ExplicitCallGraph) analysisEnvironment
-				.getCallGraph();
-		if (cg.getPossibleTargetNumbers(node, callSiteRef) == null) {
+		Set<CGNode> possibleTargets = analysisEnvironment.getCallGraph().getPossibleTargets(node, callSiteRef);
+		
+		if (possibleTargets == null) {			
 			System.err.println("UNSOUND: Figure out why there are no call targets of: "
 					+ callSiteRef);
+			System.out.println("invoke type"+instruction.toString());
 			return new CostResultMemory();
 		}
 
-		Set<CGNode> possibleTargets = analysisEnvironment.getCallGraph()
-				.getPossibleTargets(node, callSiteRef);
 		ICostResult maximumResult = null;
 		ICostResult tempResult = null;
 		CallStringContext csContext = (CallStringContext) node.getContext();
@@ -550,7 +549,18 @@ public class PlusAnalyzer {
 		}
 
 		try {
-			int allocationCost = arrayLength * model.getSizeofType(typeName);
+			int ocost;
+			TypeName o = TypeName.string2TypeName(typeName.toString().substring(1));
+			
+			try {
+				ocost = model.getSizeofType(o);
+			} catch (NoSuchElementException e) {				
+				IClass aClass = Util.getIClass(typeName.toString(),this.analysisEnvironment.getClassHierarchy());
+				ocost = (int) this.calcCost(aClass);					
+			}
+			
+			int allocationCost = arrayLength * ocost;
+			
 			cost.allocationCost = allocationCost;
 			cost.typeNameByNodeId.put(block.getGraphNodeId(), typeName);
 			cost.arraySizeByNodeId.put(block.getGraphNodeId(),
@@ -615,6 +625,7 @@ public class PlusAnalyzer {
 		}
 	}
 
+	
 	private long calcCost(IClass aClass) {
 		long sum = 0;
 
