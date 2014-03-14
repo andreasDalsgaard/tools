@@ -43,7 +43,7 @@ echo $TEST
 cd $JOPROOT
 make java_app -e P1=paper P2=privmem/pmFFTcpResult P3=pmFFTcpResult
 cd -
-python extractSourceFromJopRepos.py --joproot $JOPROOT --srctarget "/tmp/${TEST}" --mapping com:common/com java:jdk_base/java joprt:common/joprt util:common/util javax:rtapi/javax privmem:paper/privmem
+python extractSourceFromJopRepos.py --joproot $JOPROOT --srctarget "/tmp/${TEST}" --mapping com:common/com java:jdk_base/java joprt:common/joprt util:common/util javax:rtapi/javax privmem:paper/privmem ALTjava:jdk16/java
 rm -rf "${TEST}/"
 cp -R "/tmp/${TEST}/" .
 cp "${JOPROOT}/java/target/dist/lib/classes.jar" "${TEST}.jar"
