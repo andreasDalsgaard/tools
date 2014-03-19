@@ -91,7 +91,7 @@ public class AnalysisEnvironmentBuilder {
 				String className = entry.getClassName();
 				File file = originalSourceCodeFilesByClassName.get(sw10.spideybc.util.Util.getClassNameOrOuterMostClassNameIfNestedClass(className));
 				if(file != null)
-					scope.addSourceFileToScope(scope.getLoader(AnalysisScope.APPLICATION), file, entry.getClassName() + ".java");
+					scope.addSourceFileToScope(scope.getLoader(AnalysisScope.PRIMORDIAL), file, entry.getClassName() + ".java");
 			}	  
 			else {
 				if (entry.isClassFile()) {
